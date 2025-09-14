@@ -1,36 +1,35 @@
 // services/ttsService.ts
 
 let voices: SpeechSynthesisVoice[] = [];
-let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
+let voicesLoaded = false; // To track if the loading process has completed at least once.
 
 const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
-  if (voicesPromise) {
-    return voicesPromise;
-  }
-  voicesPromise = new Promise((resolve) => {
+  return new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       return resolve([]);
     }
 
-    // Failsafe: If voices don't load after 2.5s, resolve with what we have (or empty).
-    // This prevents the app from getting stuck if `onvoiceschanged` never fires.
+    // If we already have voices, resolve immediately.
+    if (voicesLoaded && voices.length > 0) {
+      return resolve(voices);
+    }
+    
     const timeout = setTimeout(() => {
         console.warn('Speech synthesis voice loading timed out.');
         const currentVoices = window.speechSynthesis.getVoices();
-        if (currentVoices.length > 0) {
-            voices = currentVoices;
-            resolve(voices);
-        } else {
-            resolve([]); // Resolve with empty array to unblock the UI
-        }
+        voices = currentVoices;
+        voicesLoaded = true;
+        resolve(voices);
     }, 2500);
 
     const setAndResolve = () => {
       const voiceList = window.speechSynthesis.getVoices();
       if (voiceList.length > 0) {
-        clearTimeout(timeout); // We got voices, so cancel the failsafe timeout
-        voices = voiceList; 
+        clearTimeout(timeout);
+        voices = voiceList;
+        voicesLoaded = true;
         resolve(voiceList);
+        window.speechSynthesis.onvoiceschanged = null; // Clean up listener
         return true;
       }
       return false;
@@ -40,18 +39,32 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
       window.speechSynthesis.onvoiceschanged = setAndResolve;
     }
   });
-  return voicesPromise;
 };
 
-// Immediately start loading voices when the module is loaded.
-loadVoices();
-
 /**
- * Checks if a Chinese language voice pack is available for speech synthesis.
+ * Initializes the audio engine by "priming" it and then checks for Chinese voice support.
+ * Must be called from within a user-initiated event (e.g., a button click).
  * @returns {Promise<boolean>} A promise that resolves to true if a Chinese voice is found, false otherwise.
  */
-export const isChineseSupported = async (): Promise<boolean> => {
-    await loadVoices(); // Wait for the voices list to be populated
+export const initializeAndCheckChineseSupport = async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+        return false;
+    }
+
+    // On some mobile browsers, getVoices() is empty until the first speech request.
+    // This "primes the pump" by making a silent, instantly-cancelled request.
+    if (window.speechSynthesis.getVoices().length === 0) {
+        const primer = new SpeechSynthesisUtterance(' ');
+        primer.volume = 0;
+        primer.pitch = 0;
+        primer.rate = 0;
+        window.speechSynthesis.speak(primer);
+        // Give the engine a moment to initialize.
+        await new Promise(resolve => setTimeout(resolve, 100));
+        window.speechSynthesis.cancel();
+    }
+    
+    await loadVoices();
     return voices.some(voice => voice.lang.startsWith('zh'));
 };
 
@@ -62,21 +75,18 @@ const createUtterance = (text: string, lang: 'zh-CN' | 'en-US'): SpeechSynthesis
   utterance.rate = 0.9;
   utterance.pitch = 1.2;
 
-  // This synchronous check is a fallback for immediate user interaction.
-  if (voices.length === 0) {
-      const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices.length > 0) {
-          voices = availableVoices;
-      }
-  }
-
+  // Since loadVoices has been called, the `voices` array should be populated.
   let desiredVoice = voices.find(voice => voice.lang === lang);
   if (!desiredVoice && lang === 'zh-CN') {
+    // Fallback to any Chinese voice if the specific 'zh-CN' isn't available
     desiredVoice = voices.find(voice => voice.lang.startsWith('zh'));
   }
 
   if (desiredVoice) {
     utterance.voice = desiredVoice;
+  } else {
+    // This is a crucial log for debugging.
+    console.warn(`No voice found for lang: ${lang}. The available voices are:`, voices.map(v => v.lang));
   }
   
   return utterance;
