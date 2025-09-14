@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LearningView from './components/LearningView';
 import QuizView from './components/QuizView';
@@ -62,7 +61,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (gameState === GameState.Welcome) {
-      speak("Hi Lucia! Welcome to your Chinese Adventure! Let's learn some new words!", 'en-US');
+      void speak("Hi Lucia! Welcome to your Chinese Adventure! Let's learn some new words!", 'en-US');
     }
   }, [gameState]);
   
@@ -74,17 +73,17 @@ const App: React.FC = () => {
 
   const handleStartLearning = () => {
     setGameState(GameState.Learning);
-    speak("Let's start learning!", 'en-US');
+    void speak("Let's start learning!", 'en-US');
   };
 
   const handleStartQuiz = () => {
     setGameState(GameState.Quiz);
-    speak("Great job! Now, are you ready for a quiz?", 'en-US');
+    void speak("Great job! Now, are you ready for a quiz?", 'en-US');
   };
   
   const handleQuizFinished = () => {
     setGameState(GameState.Finished);
-    speak("You finished the quiz! You are amazing!", 'en-US');
+    void speak("You finished the quiz! You are amazing!", 'en-US');
   }
 
   const handlePlayAgain = () => {

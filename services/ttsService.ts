@@ -1,91 +1,123 @@
-// A cache for voices to avoid repeated calls to getVoices()
-let voices: SpeechSynthesisVoice[] = [];
-
-// Function to populate voices. To be called once and on onvoiceschanged event.
-const updateVoices = () => {
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    voices = window.speechSynthesis.getVoices();
-  }
-};
-
-// Initial setup
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  // If voices are already available, grab them.
-  updateVoices();
-  // Otherwise, they will be loaded asynchronously, so we listen for the event.
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = updateVoices;
-  }
-}
+// A singleton promise to ensure we only try to load voices once.
+let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
 
 /**
- * Creates and configures a SpeechSynthesisUtterance object.
+ * Asynchronously loads and caches the list of available speech synthesis voices.
+ * This is crucial because browsers load voices asynchronously.
+ * @returns A promise that resolves with an array of SpeechSynthesisVoice objects.
+ */
+const getVoices = (): Promise<SpeechSynthesisVoice[]> => {
+  if (voicesPromise) {
+    return voicesPromise;
+  }
+
+  voicesPromise = new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.warn('Speech synthesis not supported.');
+      resolve([]);
+      return;
+    }
+
+    const load = () => {
+      const voiceList = window.speechSynthesis.getVoices();
+      if (voiceList.length > 0) {
+        // Voices are loaded, resolve the promise.
+        resolve(voiceList);
+        return true;
+      }
+      return false;
+    };
+    
+    // Try to load voices immediately. If they're not ready,
+    // the onvoiceschanged event will trigger the load later.
+    if (!load()) {
+      window.speechSynthesis.onvoiceschanged = () => load();
+    }
+  });
+
+  return voicesPromise;
+};
+
+// Start loading voices as soon as the module is imported.
+getVoices();
+
+
+/**
+ * Creates and configures a SpeechSynthesisUtterance object with the best available voice.
  * @param text The text to be spoken.
- * @param lang The language of the text.
+ * @param lang The desired language.
+ * @param voices The array of available system voices.
  * @returns A configured SpeechSynthesisUtterance object.
  */
-const createUtterance = (text: string, lang: 'zh-CN' | 'en-US'): SpeechSynthesisUtterance => {
+const createUtterance = (text: string, lang: 'zh-CN' | 'en-US', voices: SpeechSynthesisVoice[]): SpeechSynthesisUtterance => {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
   utterance.rate = 0.9;
   utterance.pitch = 1.2;
 
-  // Attempt to find a matching voice from our cached list.
-  const desiredVoice = voices.find(voice => voice.lang === lang);
+  // Find the best matching voice.
+  // 1. Exact match for lang (e.g., 'zh-CN').
+  let desiredVoice = voices.find(voice => voice.lang === lang);
+  
+  // 2. If no exact match for Chinese, try a broader match (e.g., 'zh-TW', 'zh-HK').
+  if (!desiredVoice && lang === 'zh-CN') {
+    desiredVoice = voices.find(voice => voice.lang.startsWith('zh'));
+  }
+
   if (desiredVoice) {
     utterance.voice = desiredVoice;
-  } else if (voices.length > 0) {
-    // Fallback if the specific language voice is not found but we have voices.
-    console.warn(`Could not find a voice for ${lang}. A default will be used.`);
+  } else {
+    // If no voice is found, the browser will use a default.
+    // This might fail silently for Chinese on some systems.
+    console.warn(`No voice found for language: ${lang}. Relying on browser default.`);
   }
-  // If voices array is empty, the browser will handle it (it might be because they haven't loaded yet).
 
   return utterance;
 };
 
 /**
- * Prepares the speech synthesis engine by resuming if paused and cancelling current speech.
- * This helps to fix a common bug on mobile browsers where the engine gets "stuck".
+ * Prepares the speech engine. It's crucial to cancel previous utterances
+ * before starting a new sequence.
  */
 const prepareToSpeak = (): boolean => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
         return false;
     }
-    // If the synthesizer is paused, resume it. This is a common fix for mobile browsers.
+    // Resume if paused (a common issue on mobile).
     if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
     }
-    // Cancel any ongoing or queued speech to start fresh.
+    // Clear any previously queued utterances.
     window.speechSynthesis.cancel();
     return true;
 }
 
 /**
- * Speaks a single piece of text, cancelling any ongoing speech.
- * This is for single, interruptive announcements.
+ * Speaks a single piece of text.
  */
-export const speak = (text: string, lang: 'zh-CN' | 'en-US') => {
+export const speak = async (text: string, lang: 'zh-CN' | 'en-US') => {
+  const voices = await getVoices();
   if (!prepareToSpeak()) return;
   
-  const utterance = createUtterance(text, lang);
+  const utterance = createUtterance(text, lang, voices);
 
-  // A small delay after cancel can improve reliability on some mobile browsers.
+  // A small delay after cancelling can improve stability on some browsers.
   setTimeout(() => {
     window.speechSynthesis.speak(utterance);
   }, 100);
 };
 
 /**
- * Speaks a sequence of text parts one after another by queueing them.
- * This is the primary method to use for multi-part speech to avoid 'onend' bugs.
+ * Speaks a sequence of text parts by queueing them.
  */
-export const speakSequence = (parts: {text: string, lang: 'zh-CN' | 'en-US'}[]) => {
+export const speakSequence = async (parts: {text: string, lang: 'zh-CN' | 'en-US'}[]) => {
+  const voices = await getVoices();
   if (!prepareToSpeak() || parts.length === 0) return;
 
-  // A small delay after cancel can improve reliability.
+  // Queue all utterances. The browser's speech engine will play them in order.
   setTimeout(() => {
     parts.forEach(part => {
-      const utterance = createUtterance(part.text, part.lang);
+      const utterance = createUtterance(part.text, part.lang, voices);
       window.speechSynthesis.speak(utterance);
     });
   }, 100);
