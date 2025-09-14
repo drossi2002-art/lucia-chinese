@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Word } from '../types';
 import { speakSequence } from '../services/ttsService';
 import SpeakerButton from './SpeakerButton';
-import { ArrowLeft, ArrowRight, Check } from './Icons';
+import { ArrowLeft, ArrowRight, Check, Pencil } from './Icons';
 
 interface LearningViewProps {
   words: Word[];
@@ -10,9 +10,10 @@ interface LearningViewProps {
   onFinishLearning: () => void;
   currentWordIndex: number;
   setCurrentWordIndex: (index: number) => void;
+  onStartWriting: () => void;
 }
 
-const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFinishLearning, currentWordIndex, setCurrentWordIndex }) => {
+const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFinishLearning, currentWordIndex, setCurrentWordIndex, onStartWriting }) => {
   const currentWord = words[currentWordIndex];
   const { Icon } = currentWord;
 
@@ -60,7 +61,7 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
         <SpeakerButton onClick={playWordAudioSequence} />
       </div>
 
-      <div className="flex justify-between w-full mt-8">
+      <div className="flex justify-between items-center w-full mt-8">
         <button
           onClick={handlePrev}
           disabled={currentWordIndex === 0}
@@ -69,6 +70,15 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
         >
           <ArrowLeft className="w-8 h-8 text-gray-600" />
         </button>
+        
+        <button
+          onClick={onStartWriting}
+          className="p-4 bg-white rounded-full shadow-lg transform hover:scale-110 transition-transform"
+          aria-label="Practice Writing"
+        >
+          <Pencil className="w-8 h-8 text-purple-600" />
+        </button>
+
         {currentWordIndex === words.length - 1 ? (
           <button onClick={handleNext} className="px-8 py-4 bg-green-500 text-white font-bold rounded-full shadow-lg transform hover:scale-105 transition-transform text-xl flex items-center gap-2">
             Quiz Time! <Check className="w-6 h-6" />

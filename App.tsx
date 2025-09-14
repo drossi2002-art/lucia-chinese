@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import LearningView from './components/LearningView';
 import QuizView from './components/QuizView';
+import WritingView from './components/WritingView';
 import { WORDS } from './constants';
 import { speak } from './services/ttsService';
 import ProgressBar from './components/ProgressBar';
@@ -8,6 +9,7 @@ import ProgressBar from './components/ProgressBar';
 enum GameState {
   Welcome,
   Learning,
+  Writing,
   Quiz,
   Finished
 }
@@ -27,16 +29,24 @@ const App: React.FC = () => {
     setGameState(GameState.Learning);
     speak("Let's start learning!", 'en-US');
   };
+  
+  const handleStartWriting = () => {
+    setGameState(GameState.Writing);
+  };
+
+  const handleFinishWriting = () => {
+    setGameState(GameState.Learning);
+  };
 
   const handleStartQuiz = () => {
     setGameState(GameState.Quiz);
     speak("Great job! Now, are you ready for a quiz?", 'en-US');
   };
   
-  const handleQuizFinished = () => {
+  const handleMCQuizFinished = () => {
     setGameState(GameState.Finished);
-    speak("You finished the quiz! You are amazing!", 'en-US');
-  }
+    speak("You finished everything! You are a superstar!", 'en-US');
+  };
 
   const handlePlayAgain = () => {
     setProgress(new Array(WORDS.length).fill(false));
@@ -82,10 +92,18 @@ const App: React.FC = () => {
             onFinishLearning={handleStartQuiz}
             currentWordIndex={currentWordIndex}
             setCurrentWordIndex={setCurrentWordIndex}
+            onStartWriting={handleStartWriting}
+          />
+        );
+      case GameState.Writing:
+        return (
+          <WritingView 
+            word={WORDS[currentWordIndex]} 
+            onBack={handleFinishWriting} 
           />
         );
       case GameState.Quiz:
-        return <QuizView words={WORDS} onQuizFinished={handleQuizFinished} />;
+        return <QuizView words={WORDS} onQuizFinished={handleMCQuizFinished} />;
       case GameState.Finished:
          return (
           <div className="text-center">
