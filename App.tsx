@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import LearningView from './components/LearningView';
 import QuizView from './components/QuizView';
 import { WORDS } from './constants';
-import { speak, initializeAndCheckChineseSupport } from './services/ttsService';
+import { speak } from './services/ttsService';
 import ProgressBar from './components/ProgressBar';
 
 enum GameState {
@@ -12,14 +12,10 @@ enum GameState {
   Finished
 }
 
-type TtsStatus = 'unknown' | 'ready' | 'unsupported';
-
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.Welcome);
   const [progress, setProgress] = useState<boolean[]>(new Array(WORDS.length).fill(false));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [ttsStatus, setTtsStatus] = useState<TtsStatus>('unknown');
-  const [isChecking, setIsChecking] = useState(false);
 
   const handleWordLearned = (index: number) => {
     const newProgress = [...progress];
@@ -27,18 +23,9 @@ const App: React.FC = () => {
     setProgress(newProgress);
   };
 
-  const handleStartLearning = async () => {
-    setIsChecking(true);
-    const isSupported = await initializeAndCheckChineseSupport();
-    setIsChecking(false);
-
-    if (isSupported) {
-        setTtsStatus('ready');
-        setGameState(GameState.Learning);
-        speak("Let's start learning!", 'en-US');
-    } else {
-        setTtsStatus('unsupported');
-    }
+  const handleStartLearning = () => {
+    setGameState(GameState.Learning);
+    speak("Let's start learning!", 'en-US');
   };
 
   const handleStartQuiz = () => {
@@ -54,7 +41,6 @@ const App: React.FC = () => {
   const handlePlayAgain = () => {
     setProgress(new Array(WORDS.length).fill(false));
     setCurrentWordIndex(0);
-    setTtsStatus('unknown');
     setGameState(GameState.Welcome);
   };
 
@@ -64,27 +50,21 @@ const App: React.FC = () => {
         <h1 className="text-4xl md:text-6xl font-bold text-pink-500 mb-4">Lucia's Chinese Adventure</h1>
         <p className="text-lg md:text-xl text-gray-600 mb-8">Ready to learn some new words?</p>
 
-        {ttsStatus === 'unsupported' && (
-            <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 rounded-lg my-6 text-left max-w-lg mx-auto">
-                <h3 className="font-bold">Chinese Voice Missing</h3>
-                <p className="text-sm">I can't find a Chinese voice on your phone! Please install one to hear the words:</p>
-                <ol className="list-decimal list-inside text-sm mt-2">
-                    <li>Go to your phone's <strong>Settings</strong>.</li>
-                    <li>Search for and tap <strong>"Text-to-speech"</strong>.</li>
-                    <li>Tap your engine (e.g., "Speech Services by Google"), then tap the settings icon ⚙️.</li>
-                    <li>Tap <strong>"Install voice data"</strong>.</li>
-                    <li>Find and install <strong>Chinese</strong>.</li>
-                    <li>Come back here and tap "Let's Go!" again.</li>
-                </ol>
-            </div>
-        )}
+        <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 rounded-lg my-6 text-left max-w-lg mx-auto">
+            <h3 className="font-bold">Important Note</h3>
+            <p className="text-sm">To hear the Chinese words, please make sure you have a Chinese voice installed on your phone.</p>
+            <ol className="list-decimal list-inside text-sm mt-2">
+                <li>Go to your phone's <strong>Settings</strong>.</li>
+                <li>Search for and open <strong>"Text-to-speech"</strong>.</li>
+                <li>Go to voice settings and <strong>install voice data</strong> for <strong>Chinese</strong>.</li>
+            </ol>
+        </div>
         
         <button
           onClick={handleStartLearning}
-          disabled={isChecking}
-          className="px-8 py-4 bg-yellow-400 text-yellow-800 font-bold rounded-full shadow-lg hover:bg-yellow-500 transform hover:scale-105 transition-transform duration-300 text-2xl disabled:bg-gray-300 disabled:cursor-wait"
+          className="px-8 py-4 bg-yellow-400 text-yellow-800 font-bold rounded-full shadow-lg hover:bg-yellow-500 transform hover:scale-105 transition-transform duration-300 text-2xl"
         >
-          {isChecking ? 'Checking Audio...' : "Let's Go!"}
+          Let's Go!
         </button>
       </div>
     );
