@@ -41,6 +41,25 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState<boolean[]>(new Array(WORDS.length).fill(false));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
 
+  // Keep the speech synthesis engine active on mobile browsers
+  useEffect(() => {
+    const keepAlive = () => {
+      // Don't interrupt if it's already speaking
+      if (typeof window !== 'undefined' && window.speechSynthesis && !window.speechSynthesis.speaking) {
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0; // Make it silent
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+    // Run this every 10 seconds to prevent the speech engine from going to sleep
+    const intervalId = setInterval(keepAlive, 10000);
+
+    // Clean up on component unmount
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
   useEffect(() => {
     if (gameState === GameState.Welcome) {
       speak("Hi Lucia! Welcome to your Chinese Adventure! Let's learn some new words!", 'en-US');
