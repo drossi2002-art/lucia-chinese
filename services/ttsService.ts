@@ -1,4 +1,3 @@
-
 // A cache for voices to avoid repeated calls to getVoices()
 let voices: SpeechSynthesisVoice[] = [];
 
@@ -45,16 +44,28 @@ const createUtterance = (text: string, lang: 'zh-CN' | 'en-US'): SpeechSynthesis
 };
 
 /**
+ * Prepares the speech synthesis engine by resuming if paused and cancelling current speech.
+ * This helps to fix a common bug on mobile browsers where the engine gets "stuck".
+ */
+const prepareToSpeak = (): boolean => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+        return false;
+    }
+    // If the synthesizer is paused, resume it. This is a common fix for mobile browsers.
+    if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+    }
+    // Cancel any ongoing or queued speech to start fresh.
+    window.speechSynthesis.cancel();
+    return true;
+}
+
+/**
  * Speaks a single piece of text, cancelling any ongoing speech.
  * This is for single, interruptive announcements.
  */
 export const speak = (text: string, lang: 'zh-CN' | 'en-US') => {
-  if (typeof window === 'undefined' || !window.speechSynthesis) {
-    return;
-  }
-  
-  // Ensure any previous speech is stopped.
-  window.speechSynthesis.cancel();
+  if (!prepareToSpeak()) return;
   
   const utterance = createUtterance(text, lang);
 
@@ -69,12 +80,7 @@ export const speak = (text: string, lang: 'zh-CN' | 'en-US') => {
  * This is the primary method to use for multi-part speech to avoid 'onend' bugs.
  */
 export const speakSequence = (parts: {text: string, lang: 'zh-CN' | 'en-US'}[]) => {
-  if (typeof window === 'undefined' || !window.speechSynthesis || parts.length === 0) {
-    return;
-  }
-
-  // Ensure any previous speech is stopped before queueing new parts.
-  window.speechSynthesis.cancel();
+  if (!prepareToSpeak() || parts.length === 0) return;
 
   // A small delay after cancel can improve reliability.
   setTimeout(() => {
