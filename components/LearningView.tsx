@@ -18,7 +18,7 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
 
   useEffect(() => {
     // Automatically speak the English and Chinese words when the card appears
-    void speakSequence([
+    speakSequence([
       { text: currentWord.english, lang: 'en-US' },
       { text: currentWord.chinese, lang: 'zh-CN' },
     ]);
@@ -40,7 +40,7 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
   };
   
   const playWordAudioSequence = () => {
-     void speakSequence([
+     speakSequence([
       { text: currentWord.english, lang: 'en-US' },
       { text: currentWord.chinese, lang: 'zh-CN' },
     ]);

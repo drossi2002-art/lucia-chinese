@@ -27,7 +27,7 @@ const QuizView: React.FC<QuizViewProps> = ({ words, onQuizFinished }) => {
 
   useEffect(() => {
     generateOptions();
-    void speak(`Tap the picture for: ${words[currentQuestionIndex].chinese}`, 'zh-CN');
+    speak(`Tap the picture for: ${words[currentQuestionIndex].chinese}`, 'zh-CN');
   }, [currentQuestionIndex, generateOptions, words]);
   
   const handleAnswer = (selectedWord: Word) => {
@@ -36,10 +36,10 @@ const QuizView: React.FC<QuizViewProps> = ({ words, onQuizFinished }) => {
     setAnswered(true);
     if (selectedWord.chinese === words[currentQuestionIndex].chinese) {
       setFeedback('correct');
-      void speak('Correct! Awesome!', 'en-US');
+      speak('Correct! Awesome!', 'en-US');
     } else {
       setFeedback('incorrect');
-      void speak('Oops, try again!', 'en-US');
+      speak('Oops, try again!', 'en-US');
     }
 
     setTimeout(() => {

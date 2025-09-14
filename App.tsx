@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import LearningView from './components/LearningView';
 import QuizView from './components/QuizView';
 import { WORDS } from './constants';
@@ -40,25 +40,6 @@ const App: React.FC = () => {
   const [progress, setProgress] = useState<boolean[]>(new Array(WORDS.length).fill(false));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
 
-  // Keep the speech synthesis engine active on mobile browsers
-  useEffect(() => {
-    const keepAlive = () => {
-      // Don't interrupt if it's already speaking
-      if (typeof window !== 'undefined' && window.speechSynthesis && !window.speechSynthesis.speaking) {
-        const utterance = new SpeechSynthesisUtterance('');
-        utterance.volume = 0; // Make it silent
-        window.speechSynthesis.speak(utterance);
-      }
-    };
-    // Run this every 10 seconds to prevent the speech engine from going to sleep
-    const intervalId = setInterval(keepAlive, 10000);
-
-    // Clean up on component unmount
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
   const handleWordLearned = (index: number) => {
     const newProgress = [...progress];
     newProgress[index] = true;
@@ -67,17 +48,17 @@ const App: React.FC = () => {
 
   const handleStartLearning = () => {
     setGameState(GameState.Learning);
-    void speak("Let's start learning!", 'en-US');
+    speak("Let's start learning!", 'en-US');
   };
 
   const handleStartQuiz = () => {
     setGameState(GameState.Quiz);
-    void speak("Great job! Now, are you ready for a quiz?", 'en-US');
+    speak("Great job! Now, are you ready for a quiz?", 'en-US');
   };
   
   const handleQuizFinished = () => {
     setGameState(GameState.Finished);
-    void speak("You finished the quiz! You are amazing!", 'en-US');
+    speak("You finished the quiz! You are amazing!", 'en-US');
   }
 
   const handlePlayAgain = () => {
