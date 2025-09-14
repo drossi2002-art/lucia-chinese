@@ -53,9 +53,20 @@ const createUtterance = (text: string, lang: 'zh-CN' | 'en-US'): SpeechSynthesis
   utterance.rate = 0.9;
   utterance.pitch = 1.2;
 
+  // Synchronously refresh the voice list if our cache is empty.
+  // This is the critical fix for mobile, ensuring that if voices have loaded
+  // just in time for the user's first interaction, we use them.
+  if (voices.length === 0) {
+      const availableVoices = window.speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+          voices = availableVoices;
+      }
+  }
+
   // Find the best matching voice from the (potentially empty) cached list.
   let desiredVoice = voices.find(voice => voice.lang === lang);
   if (!desiredVoice && lang === 'zh-CN') {
+    // Broader search for any Chinese voice as a fallback
     desiredVoice = voices.find(voice => voice.lang.startsWith('zh'));
   }
 
