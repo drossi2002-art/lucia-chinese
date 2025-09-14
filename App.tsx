@@ -1,32 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LearningView from './components/LearningView';
 import QuizView from './components/QuizView';
 import { WORDS } from './constants';
-import { speak } from './services/ttsService';
-import { Word } from './types';
+import { speak, isChineseSupported } from './services/ttsService';
 import ProgressBar from './components/ProgressBar';
-
-/*
-A note on design choices based on the user request:
-
-The user asked me to clarify some points with binary questions. Since this is a single-turn generation, I've made the following assumptions to build the most engaging and suitable app for a 7-year-old:
-
-1. Should the app include a quiz or game?
-   - ASSUMPTION: Yes. Gamification is key for engagement. I've added a simple quiz mode.
-
-2. Should the app listen to her pronunciation?
-   - ASSUMPTION: No. Speech recognition can be frustratingly inaccurate for a child and adds significant complexity. The app focuses on listening and repetition.
-
-3. Should the app have a specific visual theme?
-   - ASSUMPTION: Yes. A cute, colorful, and friendly animal theme is used to make it visually appealing.
-
-4. Should the app track progress?
-   - ASSUMPTION: Yes. A simple progress bar with stars provides positive reinforcement.
-
-5. Should the app use AI for contextual examples?
-   - ASSUMPTION: Yes. Gemini is used to generate fun, simple sentences, adding a dynamic and creative learning element.
-*/
-
 
 enum GameState {
   Welcome,
@@ -35,10 +12,23 @@ enum GameState {
   Finished
 }
 
+type TtsStatus = 'checking' | 'ready' | 'unsupported';
+
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.Welcome);
   const [progress, setProgress] = useState<boolean[]>(new Array(WORDS.length).fill(false));
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [ttsStatus, setTtsStatus] = useState<TtsStatus>('checking');
+
+  useEffect(() => {
+    // Check for Chinese TTS support when the app loads.
+    // Use a timeout to give the browser a moment to load voices.
+    setTimeout(() => {
+        isChineseSupported().then(isSupported => {
+            setTtsStatus(isSupported ? 'ready' : 'unsupported');
+        });
+    }, 500); // A small delay can help ensure voices are loaded
+  }, []);
 
   const handleWordLearned = (index: number) => {
     const newProgress = [...progress];
@@ -67,21 +57,42 @@ const App: React.FC = () => {
     setGameState(GameState.Welcome);
   };
 
+  const renderWelcomeScreen = () => {
+    return (
+      <div className="text-center">
+        <h1 className="text-4xl md:text-6xl font-bold text-pink-500 mb-4">Lucia's Chinese Adventure</h1>
+        <p className="text-lg md:text-xl text-gray-600 mb-8">Ready to learn some new words?</p>
+
+        {ttsStatus === 'unsupported' && (
+            <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 rounded-lg my-6 text-left max-w-lg mx-auto">
+                <h3 className="font-bold">Chinese Voice Needed</h3>
+                <p className="text-sm">To hear Chinese words, please install the free Chinese voice pack on your phone:</p>
+                <ol className="list-decimal list-inside text-sm mt-2">
+                    <li>Go to your phone's <strong>Settings</strong>.</li>
+                    <li>Search for and tap <strong>"Text-to-speech"</strong>.</li>
+                    <li>Tap your engine (e.g., "Speech Services by Google"), then tap the settings icon ⚙️.</li>
+                    <li>Tap <strong>"Install voice data"</strong>.</li>
+                    <li>Find and install <strong>Chinese</strong>.</li>
+                    <li>Restart this app.</li>
+                </ol>
+            </div>
+        )}
+        
+        <button
+          onClick={handleStartLearning}
+          disabled={ttsStatus === 'checking'}
+          className="px-8 py-4 bg-yellow-400 text-yellow-800 font-bold rounded-full shadow-lg hover:bg-yellow-500 transform hover:scale-105 transition-transform duration-300 text-2xl disabled:bg-gray-300 disabled:cursor-wait"
+        >
+          {ttsStatus === 'checking' ? 'Checking Audio...' : "Let's Go!"}
+        </button>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (gameState) {
       case GameState.Welcome:
-        return (
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-pink-500 mb-4">Lucia's Chinese Adventure</h1>
-            <p className="text-lg md:text-xl text-gray-600 mb-8">Ready to learn some new words?</p>
-            <button
-              onClick={handleStartLearning}
-              className="px-8 py-4 bg-yellow-400 text-yellow-800 font-bold rounded-full shadow-lg hover:bg-yellow-500 transform hover:scale-105 transition-transform duration-300 text-2xl"
-            >
-              Let's Go!
-            </button>
-          </div>
-        );
+        return renderWelcomeScreen();
       case GameState.Learning:
         return (
           <LearningView
