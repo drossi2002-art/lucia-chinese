@@ -100,11 +100,7 @@ export const speak = async (text: string, lang: 'zh-CN' | 'en-US') => {
   if (!prepareToSpeak()) return;
   
   const utterance = createUtterance(text, lang, voices);
-
-  // A small delay after cancelling can improve stability on some browsers.
-  setTimeout(() => {
-    window.speechSynthesis.speak(utterance);
-  }, 100);
+  window.speechSynthesis.speak(utterance);
 };
 
 /**
@@ -115,10 +111,8 @@ export const speakSequence = async (parts: {text: string, lang: 'zh-CN' | 'en-US
   if (!prepareToSpeak() || parts.length === 0) return;
 
   // Queue all utterances. The browser's speech engine will play them in order.
-  setTimeout(() => {
-    parts.forEach(part => {
-      const utterance = createUtterance(part.text, part.lang, voices);
-      window.speechSynthesis.speak(utterance);
-    });
-  }, 100);
+  parts.forEach(part => {
+    const utterance = createUtterance(part.text, part.lang, voices);
+    window.speechSynthesis.speak(utterance);
+  });
 };

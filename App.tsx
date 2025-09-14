@@ -59,12 +59,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (gameState === GameState.Welcome) {
-      void speak("Hi Lucia! Welcome to your Chinese Adventure! Let's learn some new words!", 'en-US');
-    }
-  }, [gameState]);
-  
   const handleWordLearned = (index: number) => {
     const newProgress = [...progress];
     newProgress[index] = true;
