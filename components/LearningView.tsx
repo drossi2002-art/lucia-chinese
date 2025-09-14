@@ -22,13 +22,6 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
       { text: currentWord.english, lang: 'en-US' },
       { text: currentWord.chinese, lang: 'zh-CN' },
     ]);
-    
-    // Cleanup function to stop any speech when the component unmounts or word changes
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
   }, [currentWord]);
 
   const handleNext = () => {

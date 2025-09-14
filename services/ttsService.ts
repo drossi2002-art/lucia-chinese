@@ -1,71 +1,86 @@
-// Helper to handle the core speech synthesis logic, without cancelling previous speech
-const doSpeak = (text: string, lang: 'zh-CN' | 'en-US', onEnd?: () => void) => {
-  if (typeof window === 'undefined' || !window.speechSynthesis) {
-    console.warn('Speech synthesis not supported in this browser.');
-    onEnd?.();
-    return;
+
+// A cache for voices to avoid repeated calls to getVoices()
+let voices: SpeechSynthesisVoice[] = [];
+
+// Function to populate voices. To be called once and on onvoiceschanged event.
+const updateVoices = () => {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    voices = window.speechSynthesis.getVoices();
   }
-  
+};
+
+// Initial setup
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  // If voices are already available, grab them.
+  updateVoices();
+  // Otherwise, they will be loaded asynchronously, so we listen for the event.
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }
+}
+
+/**
+ * Creates and configures a SpeechSynthesisUtterance object.
+ * @param text The text to be spoken.
+ * @param lang The language of the text.
+ * @returns A configured SpeechSynthesisUtterance object.
+ */
+const createUtterance = (text: string, lang: 'zh-CN' | 'en-US'): SpeechSynthesisUtterance => {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = lang;
   utterance.rate = 0.9;
   utterance.pitch = 1.2;
 
-  if (onEnd) {
-    utterance.onend = onEnd;
+  // Attempt to find a matching voice from our cached list.
+  const desiredVoice = voices.find(voice => voice.lang === lang);
+  if (desiredVoice) {
+    utterance.voice = desiredVoice;
+  } else if (voices.length > 0) {
+    // Fallback if the specific language voice is not found but we have voices.
+    console.warn(`Could not find a voice for ${lang}. A default will be used.`);
   }
+  // If voices array is empty, the browser will handle it (it might be because they haven't loaded yet).
 
-  const setVoiceAndSpeak = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang === lang);
-    if (voice) {
-      utterance.voice = voice;
-    }
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // Voices might load asynchronously. This is a robust way to handle it.
-  if (window.speechSynthesis.getVoices().length > 0) {
-    setVoiceAndSpeak();
-  } else {
-    window.speechSynthesis.onvoiceschanged = () => {
-        setVoiceAndSpeak();
-        window.speechSynthesis.onvoiceschanged = null; // Clean up listener to avoid multiple fires
-    };
-  }
+  return utterance;
 };
 
 /**
  * Speaks a single piece of text, cancelling any ongoing speech.
+ * This is for single, interruptive announcements.
  */
 export const speak = (text: string, lang: 'zh-CN' | 'en-US') => {
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return;
   }
-  doSpeak(text, lang);
+  
+  // Ensure any previous speech is stopped.
+  window.speechSynthesis.cancel();
+  
+  const utterance = createUtterance(text, lang);
+
+  // A small delay after cancel can improve reliability on some mobile browsers.
+  setTimeout(() => {
+    window.speechSynthesis.speak(utterance);
+  }, 100);
 };
 
 /**
- * Speaks a sequence of text parts one after another.
+ * Speaks a sequence of text parts one after another by queueing them.
+ * This is the primary method to use for multi-part speech to avoid 'onend' bugs.
  */
-export const speakSequence = (parts: {text: string, lang: 'zh-CN' | 'en-US'}[], onSequenceEnd?: () => void) => {
+export const speakSequence = (parts: {text: string, lang: 'zh-CN' | 'en-US'}[]) => {
   if (typeof window === 'undefined' || !window.speechSynthesis || parts.length === 0) {
-    onSequenceEnd?.();
     return;
   }
+
+  // Ensure any previous speech is stopped before queueing new parts.
   window.speechSynthesis.cancel();
-  
-  let currentIndex = 0;
 
-  const speakNext = () => {
-    if (currentIndex < parts.length) {
-      const part = parts[currentIndex];
-      currentIndex++;
-      doSpeak(part.text, part.lang, speakNext);
-    } else {
-      onSequenceEnd?.();
-    }
-  };
-
-  speakNext();
+  // A small delay after cancel can improve reliability.
+  setTimeout(() => {
+    parts.forEach(part => {
+      const utterance = createUtterance(part.text, part.lang);
+      window.speechSynthesis.speak(utterance);
+    });
+  }, 100);
 };
