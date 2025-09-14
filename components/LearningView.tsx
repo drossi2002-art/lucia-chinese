@@ -50,10 +50,12 @@ const LearningView: React.FC<LearningViewProps> = ({ words, onWordLearned, onFin
     <div className="flex flex-col items-center w-full max-w-md mx-auto">
       <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 w-full text-center transform transition-all duration-500">
         <div className="bg-yellow-100 rounded-2xl p-4 mb-4 flex justify-center items-center h-40">
-          <Icon className="w-32 h-32" />
+          <h2 className="text-7xl md:text-8xl font-bold text-pink-500">{currentWord.chinese}</h2>
         </div>
         <p className="text-gray-500 text-xl md:text-2xl font-semibold">{currentWord.english}</p>
-        <h2 className="text-4xl md:text-5xl font-bold text-pink-500 my-2">{currentWord.chinese}</h2>
+        <div className="my-2 flex justify-center items-center h-20">
+            <Icon className="w-20 h-20" />
+        </div>
         <p className="text-gray-400 text-lg md:text-xl">{currentWord.pinyin}</p>
         <SpeakerButton onClick={playWordAudioSequence} />
       </div>
