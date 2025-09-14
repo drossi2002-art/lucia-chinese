@@ -9,13 +9,26 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   }
   voicesPromise = new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
-      resolve([]);
-      return;
+      return resolve([]);
     }
+
+    // Failsafe: If voices don't load after 2.5s, resolve with what we have (or empty).
+    // This prevents the app from getting stuck if `onvoiceschanged` never fires.
+    const timeout = setTimeout(() => {
+        console.warn('Speech synthesis voice loading timed out.');
+        const currentVoices = window.speechSynthesis.getVoices();
+        if (currentVoices.length > 0) {
+            voices = currentVoices;
+            resolve(voices);
+        } else {
+            resolve([]); // Resolve with empty array to unblock the UI
+        }
+    }, 2500);
 
     const setAndResolve = () => {
       const voiceList = window.speechSynthesis.getVoices();
       if (voiceList.length > 0) {
+        clearTimeout(timeout); // We got voices, so cancel the failsafe timeout
         voices = voiceList; 
         resolve(voiceList);
         return true;

@@ -22,12 +22,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Check for Chinese TTS support when the app loads.
-    // Use a timeout to give the browser a moment to load voices.
-    setTimeout(() => {
-        isChineseSupported().then(isSupported => {
-            setTtsStatus(isSupported ? 'ready' : 'unsupported');
-        });
-    }, 500); // A small delay can help ensure voices are loaded
+    isChineseSupported().then(isSupported => {
+        setTtsStatus(isSupported ? 'ready' : 'unsupported');
+    });
   }, []);
 
   const handleWordLearned = (index: number) => {
