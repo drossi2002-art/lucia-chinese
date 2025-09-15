@@ -12,5 +12,9 @@ export default defineConfig(({ mode }) => {
       // This makes the environment variable available in the browser-side code.
       'process.env.API_KEY': JSON.stringify(env.API_KEY),
     },
+    // Expose the server to the network, making it accessible from mobile devices.
+    server: {
+      host: true,
+    },
   };
 });
